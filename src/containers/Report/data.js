@@ -81,6 +81,60 @@ export default {
               x: 'Pizza',
               y: 5
             }
+          ],
+          comparisonData: [
+            {
+              label: 'Pho',
+              values: [
+                {
+                  x: 'Sat Jun 20 2016 13:36:38 GMT+0700 (ICT)',
+                  y: 70
+                },
+                {
+                  x: 'Sat Jul 20 2016 13:36:38 GMT+0700 (ICT)',
+                  y: 50
+                },
+                {
+                  x: 'Sat Aug 20 2016 13:36:38 GMT+0700 (ICT)',
+                  y: 20
+                }
+              ]
+            },
+            {
+              label: 'Bun Bo',
+              values: [
+                {
+                  x: 'Sat Jun 20 2016 13:36:38 GMT+0700 (ICT)',
+                  y: 20
+                },
+                {
+                  x: 'Sat Jul 20 2016 13:36:38 GMT+0700 (ICT)',
+                  y: 50
+                },
+                {
+                  x: 'Sat Aug 20 2016 13:36:38 GMT+0700 (ICT)',
+                  y: 40
+                }
+              ]
+            },
+            {
+              label: 'Pizza',
+              values: [
+
+                {
+                  x: 'Sat Jun 20 2016 13:36:38 GMT+0700 (ICT)',
+                  y: 60
+                },
+                {
+                  x: 'Sat Jul 20 2016 13:36:38 GMT+0700 (ICT)',
+                  y: 50
+                },
+                {
+                  x: 'Sat Aug 20 2016 13:36:38 GMT+0700 (ICT)',
+                  y: 70
+                }
+              ]
+            }
           ]
         }
       ]
@@ -164,6 +218,59 @@ export default {
             {
               x: 'Pizza',
               y: 20
+            }
+          ],
+          comparisonData: [
+            {
+              label: 'Pho',
+              values: [
+                {
+                  x: 'Sat Jun 20 2016 13:36:38 GMT+0700 (ICT)',
+                  y: 20
+                },
+                {
+                  x: 'Sat Jul 20 2016 13:36:38 GMT+0700 (ICT)',
+                  y: 50
+                },
+                {
+                  x: 'Sat Aug 20 2016 13:36:38 GMT+0700 (ICT)',
+                  y: 40
+                }
+              ]
+            },
+            {
+              label: 'Bun Bo',
+              values: [
+                {
+                  x: 'Sat Jun 20 2016 13:36:38 GMT+0700 (ICT)',
+                  y: 60
+                },
+                {
+                  x: 'Sat Jul 20 2016 13:36:38 GMT+0700 (ICT)',
+                  y: 50
+                },
+                {
+                  x: 'Sat Aug 20 2016 13:36:38 GMT+0700 (ICT)',
+                  y: 70
+                }
+              ]
+            },
+            {
+              label: 'Pizza',
+              values: [
+                {
+                  x: 'Sat Jun 20 2016 13:36:38 GMT+0700 (ICT)',
+                  y: 70
+                },
+                {
+                  x: 'Sat Jul 20 2016 13:36:38 GMT+0700 (ICT)',
+                  y: 50
+                },
+                {
+                  x: 'Sat Aug 20 2016 13:36:38 GMT+0700 (ICT)',
+                  y: 20
+                }
+              ]
             }
           ]
         }

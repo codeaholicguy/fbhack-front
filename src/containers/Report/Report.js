@@ -3,7 +3,7 @@ import {connect} from 'react-redux';
 import Helmet from 'react-helmet';
 import {initialize} from 'redux-form';
 import Data from './data';
-import {PieChart} from 'react-d3-components';
+import {PieChart, LineChart, BarChart} from 'react-d3-components';
 
 @connect(
   () => ({}),
@@ -50,7 +50,8 @@ export default class Report extends Component {
 
   showSurveysComponent = (isShowSurveys) => {
     this.setState({
-      isShowSurveys: isShowSurveys
+      isShowSurveys: isShowSurveys,
+      currentSurvey: Data.surveys.length ? Data.surveys[0] : undefined
     });
   }
 
@@ -82,6 +83,94 @@ export default class Report extends Component {
             sort={null}
             />
         );
+    }
+  }
+
+  formatComparisonData = (data) => {
+    return data.map((item) => {
+      return {
+        x: new Date(item.x),
+        y: item.y
+      }
+    });
+  }
+
+  getXScale = (data) => {
+    let startDate, endDate;
+    startDate = data[0].x;
+
+    if (data.length <= 1) {
+      endDate = startDate;
+    } else {
+      endDate = data[data.length - 1].x;
+    }
+
+    return d3.time.scale().domain([startDate, endDate]).range([0, 800 + 50]);
+  }
+
+  getXAxis = (data) => {
+    return this.getXScale(data).ticks(d3.time.day, 1);
+  }
+
+  getLineChart = (data) => {
+    let comparisonData = this.formatComparisonData(data);
+
+    return (
+      <LineChart
+        data={{label: '', values: comparisonData}}
+        width={800}
+        height={400}
+        margin={{top: 10, bottom: 50, left: 50, right: 100}}
+        xScale={this.getXScale(comparisonData)}
+        xAxis={{tickValues: this.getXAxis(comparisonData), tickFormat: d3.time.format("%m/%d")}}
+      />
+    );
+  }
+
+  getComparisonBarChart = (data) => {
+    return data.map((item) => {
+      return (
+        <div className="bar-chart-item">
+          <h3>{item.label}</h3>
+          <BarChart
+            data={{
+              label: item.label,
+              values: item.values.map((value) => {
+                value.x = d3.time.format("%b %d")(new Date(value.x));
+                return value;
+              })
+            }}
+            width={400}
+            height={400}
+            margin={{top: 50, bottom: 50, left: 50, right: 50}}
+            sort={null}
+          />
+        </div>
+      );
+    });
+  }
+
+  getLineChart = (data) => {
+    let comparisonData = this.formatComparisonData(data);
+
+    return (
+      <LineChart
+        data={{label: '', values: comparisonData}}
+        width={800}
+        height={400}
+        margin={{top: 10, bottom: 50, left: 100, right: 100}}
+        xScale={this.getXScale(comparisonData)}
+        xAxis={{tickValues: this.getXAxis(comparisonData), tickFormat: d3.time.format("%m/%d")}}
+      />
+    );
+  }
+
+  getComparisonChart = (data, type) => {
+    switch (type) {
+      case 'choices':
+        return this.getComparisonBarChart(data);
+      default:
+        return null;
     }
   }
 
@@ -151,7 +240,36 @@ export default class Report extends Component {
 
         {!isShowSurveys &&
           <div className="row comparison-page">
-            Comparison
+            <div className="row survey-list">
+              <section className="ibox survey-list col-xs-4">
+                <ul className="list-group list-group">
+                  {data.surveys.map((survey) => {
+                    return (
+                      <li className={'list-group-item ' + (currentSurvey && currentSurvey.id === survey.id ? 'active' : '' ) } onClick={() => this.showSurvey(survey.id)}>
+                        <p>{survey.title}</p>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+
+              <div className="survey-container col-xs-8">
+                {currentSurvey &&
+                  <section className="ibox survey-details">
+                    {currentSurvey.questions.map((question) => {
+                      return question.comparisonData ? (
+                        <div className={ "survey-content survey-question survey-comparison" }>
+                          <h2>{question.title}</h2>
+                          <div className="survey-chart">
+                            {this.getComparisonChart(question.comparisonData, question.type)}
+                          </div>
+                        </div>
+                      ) : null;
+                    })}
+                  </section>
+                }
+              </div>
+            </div>
           </div>
         }
       </div>

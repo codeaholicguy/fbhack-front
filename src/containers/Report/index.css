@@ -123,3 +123,15 @@ h1 .btn-group .btn {
 .survey-answer {
   font-size: 30px;
 }
+
+.survey-comparison {
+  text-align: center;
+}
+
+.survey-comparison text {
+  font-size: 20px;
+}
+
+.bar-chart-item {
+  border-bottom: 1px solid #eee;
+}
