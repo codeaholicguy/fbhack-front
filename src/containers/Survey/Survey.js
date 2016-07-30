@@ -45,20 +45,20 @@ export default class Survey extends Component {
 
   addQuestion = (question) => {
     this.setState({
-      questions: [...this.state.questions, question]
+      questions: [...this.state.questions, {...question, index: this.state.questions.length}]
     });
   }
 
-  addBranch = (branch) => {
+  addBranch = (root) => (branch) => {
     this.setState({
-      branches: [...this.state.branches, branch]
+      branches: [...this.state.branches, {...branch, rootIndex: root.index}]
     });
   }
 
   addQuestionToBranch = (branch) => {
     return (question) => {
       branch.questions = branch.questions || [];
-      branch.questions = [...branch.questions, question];
+      branch.questions = [...branch.questions, {...question, index: branch.questions.length}];
       const branches = this.state.branches.map((value) => {
         if (value.title === branch.title) return branch;
         return value;
@@ -228,7 +228,7 @@ export default class Survey extends Component {
             <div style={{display: 'flex', flexShrink: 0, flexDirection: 'column', marginRight: 10}}>
               {
                 this.state.questions.map((question) =>
-                  <Question question={question} onAddBranch={this.addBranch}/>
+                  <Question question={question} onAddBranch={this.addBranch(question)}/>
                 )
               }
               <Question onAddQuestion={this.addQuestion}/>

@@ -6,6 +6,9 @@ import http from 'http';
 import SocketIo from 'socket.io';
 import request from 'request';
 import pg from 'pg';
+import _ from 'lodash';
+
+Promise.all(pg);
 
 const connectionString = process.env.DATABASE_URL || 'postgres://localhost:5432/fbhack';
 
@@ -14,6 +17,7 @@ const app = express();
 const server = new http.Server(app);
 
 const io = new SocketIo(server);
+const cached = {};
 io.path('/ws');
 
 app.use((req, res, next) => {
@@ -81,7 +85,7 @@ app.get('/bot', (req, res) => {
   res.send(result);
 });
 
-function callSendAPI(messageData) {
+function callSendAPI(messageData, accessToken) {
   request({
     uri: 'https://graph.facebook.com/v2.6/me/messages',
     qs: { access_token: process.env.ACCESS_TOKEN },
@@ -92,7 +96,6 @@ function callSendAPI(messageData) {
     if (!error && response.statusCode === 200) {
       const recipientId = body.recipient_id;
       const messageId = body.message_id;
-
       console.log(`Successfully sent generic message with id ${messageId} to recipient ${recipientId}`);
     } else {
       console.error('Unable to send message.');
@@ -102,17 +105,16 @@ function callSendAPI(messageData) {
   });
 }
 
-function sendTextMessage(recipientId, messageText) {
+function sendTextMessage(question, senderID) {
   const messageData = {
     recipient: {
-      id: recipientId
+      id: senderID
     },
     message: {
-      text: messageText
+      text: question.title
     }
   };
-
-  callSendAPI(messageData);
+  return callSendAPI(messageData);
 }
 
 function sendGenericMessage(recipientId) {
@@ -194,34 +196,24 @@ function sendButtonMessage(recipientId) {
   callSendAPI(messageData);
 }
 
-function sendQuickReply(recipientId) {
+function sendQuickReply(question, senderID) {
   const messageData = {
     recipient: {
-      id: recipientId
+      id: senderID
     },
     message: {
-      text: `What's your favorite movie genre?`,
-      metadata: 'DEVELOPER_DEFINED_METADATA',
-      quick_replies: [
-        {
-          'content_type': 'text',
-          'title': 'Action',
-          'payload': 'DEVELOPER_DEFINED_PAYLOAD_FOR_PICKING_ACTION'
-        },
-        {
-          'content_type': 'text',
-          'title': 'Comedy',
-          'payload': 'DEVELOPER_DEFINED_PAYLOAD_FOR_PICKING_COMEDY'
-        },
-        {
-          'content_type': 'text',
-          'title': 'Drama',
-          'payload': 'DEVELOPER_DEFINED_PAYLOAD_FOR_PICKING_DRAMA'
-        }
-      ]
+      text: question.title,
+      quick_replies: []
     }
   };
 
+  question.options.forEach((option) => {
+    messageData.message.quick_replies.push({
+      'content_type': 'text',
+      'title': option.title,
+      'payload': `${question.title}.${option.title}`
+    });
+  });
   callSendAPI(messageData);
 }
 
@@ -243,69 +235,128 @@ function sendImageMessage(recipientId) {
   callSendAPI(messageData);
 }
 
-function receivedMessage(event) {
-  const senderID = event.sender.id;
-  const recipientID = event.recipient.id;
-  const timeOfMessage = event.timestamp;
-  const message = event.message;
+function getPGconnection() {
+  return pg.connect(connectionString);
+}
 
-  console.log(`Received message for user ${senderID} and page ${recipientID} at ${timeOfMessage} with message`);
-  console.log(JSON.stringify(message));
-
-  const isEcho = message.is_echo;
-  const messageId = message.mid;
-  const appId = message.app_id;
-  const metadata = message.metadata;
-  const messageText = message.text;
-  const messageAttachments = message.attachments;
-  const quickReply = message.quick_reply;
-
-  if (isEcho) {
-    console.log(`Received echo for message ${messageId} and app ${appId} with metadata ${metadata}`);
-    return;
-  } else if (quickReply) {
-    const quickReplyPayload = quickReply.payload;
-    console.log(`Quick reply for message ${messageId} with payload ${quickReplyPayload}`);
-
-    sendTextMessage(senderID, `Quick reply tapped`);
-    return;
+function getSuryveyQuestion(targetSurvey, targetUser) {
+  cached[targetUser.fbUserId] = cached[targetUser.fbUserId] || {};
+  const currentStep = cached[targetUser.fbUserId][targetSurvey.id];
+  if (_.isEmpty(currentStep)) {
+    const question = targetSurvey.questions[0];
+    cached[targetUser.fbUserId][targetSurvey.id] = {
+      survey: targetSurvey,
+      index: 0
+    };
+    return question;
   }
-
-  if (messageText) {
-    switch (messageText) {
-      case 'image':
-        sendImageMessage(senderID);
-        break;
-
-      case 'button':
-        sendButtonMessage(senderID);
-        break;
-
-      case 'generic':
-        sendGenericMessage(senderID);
-        break;
-
-      case 'quick':
-        sendQuickReply(senderID);
-        break;
-
-      default:
-        sendTextMessage(senderID, messageText);
+  if (!_.isEmpty(currentStep.branch)) {
+    const targetBranch = _.find(targetSurvey.branches, {title: currentStep.branch});
+    const question = targetBranch.questions[currentStep.index + 1];
+    if (!_.isEmpty(question)) {
+      cached[targetUser.fbUserId][targetSurvey.id] = {
+        ...currentStep,
+        index: currentStep.index + 1
+      };
+      return question;
     }
-  } else if (messageAttachments) {
-    sendTextMessage(senderID, 'Message with attachment received');
+    cached[targetUser.fbUserId][targetSurvey.id] = {
+      survey: targetSurvey,
+      index: targetBranch.rootIndex + 1
+    };
+    return targetSurvey.questions[targetBranch.rootIndex + 1];
   }
+  const question = targetSurvey.questions[currentStep.index + 1];
+  cached[targetUser.fbUserId][targetSurvey.id] = {
+    survey: targetSurvey,
+    index: currentStep.index + 1
+  };
+  return question;
+}
+
+function sendSurveyMessage(surveyId) {
+  let targetSurvey;
+  let targetUser;
+  return new Promise((resolve, reject) => {
+    getPGconnection().then((client) => {
+      console.log(`SELECT * FROM "survey" WHERE "id"  = ${surveyId};`);
+      return client.query(`SELECT * FROM "survey" WHERE "id"  = ${surveyId};`)
+      .then((result) => {
+        targetSurvey = result.rows[0].content;
+        targetSurvey.id = result.rows[0].id;
+        targetSurvey.title = result.rows[0].title;
+        targetSurvey.fbPageId = result.rows[0].fbPageId;
+        return client.query(`SELECT * FROM "page_member" WHERE "fbPageId" = '${result.rows[0].fbPageId}';`);
+      });
+    })
+    .then((result) => {
+      targetUser = result.rows[0];
+      return targetUser;
+    })
+    .then(() => {
+      const question = getSuryveyQuestion(targetSurvey, targetUser);
+      console.log(question, cached[targetUser.fbUserId]);
+      if (!question) return resolve(true);
+      if (question.type === 'text') {
+        return sendTextMessage(question, targetUser.fbUserId);
+      } else {
+        return sendQuickReply(question, targetUser.fbUserId);
+      }
+    })
+    .catch((err) => {
+      console.log(err);
+      reject(err);
+    });
+  });
+}
+
+function isChatted(fbPageId, fbUserId) {
+  return new Promise((resolve, reject) => {
+    pg.connect(connectionString).then((client) => {
+      client.query(`SELECT COUNT(*) FROM "page_member" WHERE "fbPageId" = '${fbPageId}' AND "fbUserId" = '${fbUserId}';`).then((result) => {
+        console.log('isChatted', result.rows[0].count);
+        if (result.rows[0].count === '0') return resolve(false);
+        return resolve(true);
+      });
+    }).catch((err) => {
+      console.log(err);
+      reject(err);
+    });
+  });
 }
 
 function receivedPostback(event) {
-  const senderID = event.sender.id;
-  const recipientID = event.recipient.id;
-  const timeOfPostback = event.timestamp;
-  const payload = event.postback.payload;
+  const cachedSurveyId = _.first(_.keys(cached[event.sender.id]));
+  const cachedProcess = cached[event.sender.id][cachedSurveyId];
+  if (!_.isEmpty(cachedProcess.branch)) {
+    console.log('sendSurveyMessage', 'in branch');
+    return sendSurveyMessage(cachedSurveyId);
+  } else {
+    const branch = _.find(cachedProcess.survey.branches, {title: event.message.quick_reply.payload});
+    console.log('sendSurveyMessage', 'no branch', branch, cachedProcess.survey.branches, event.message.quick_reply.payload);
+    if (_.isEmpty(branch)) {
+      return sendSurveyMessage(cachedSurveyId);
+    }
+    else {
+      console.log('normal');
+      cached[event.sender.id][cachedSurveyId] = {
+        branch: event.message.quick_reply.payload,
+        index: 0
+      };
+      const question = _.first(branch.questions);
+      if (question.type === 'text') return sendTextMessage(question, event.sender.id);
+      return sendQuickReply(question, event.sender.id);
+    }
+  }
+}
 
-  console.log(`Received postback for user ${senderID} and page ${recipientID} with payload ${payload}, ${timeOfPostback}`);
 
-  sendTextMessage(senderID, 'Postback called');
+function receivedMessage(event) {
+  if (!_.isEmpty(event.message) && !_.isEmpty(event.message.quick_reply) && !_.isEmpty(event.message.quick_reply.payload)) {
+    return receivedPostback(event);
+  }
+  const cachedSurveyId = _.first(_.keys(cached[event.sender.id]));
+  return sendSurveyMessage(cachedSurveyId);
 }
 
 function receivedMessageRead(event) {
@@ -315,6 +366,8 @@ function receivedMessageRead(event) {
   console.log(`Received message read event for watermark ${watermark} and sequence number ${sequenceNumber}`);
 }
 
+<<<<<<< HEAD
+=======
 function isPageLikedUser(fbPageId, fbUserId) {
   return new Promise((resolve, reject) => {
     const results = [];
@@ -347,6 +400,7 @@ function formatReport(data) {
   return data;
 }
 
+>>>>>>> c7cedfcb7112ed72295cf76d1509a05b262d2500
 // API
 
 app.get('/webhook', (req, res) => {
@@ -366,9 +420,11 @@ app.post('/webhook', (req, res) => {
   if (data.object === 'page') {
     data.entry.forEach((pageEntry) => {
       pageEntry.messaging.forEach((messagingEvent) => {
-        if (messagingEvent.message) {
-          receivedMessage(messagingEvent);
+        if (messagingEvent.message && !messagingEvent.message.is_echo) {
+          console.log('a');
+          receivedMessage(messagingEvent, '262174670835679');
         } else if (messagingEvent.postback) {
+          console.log('b');
           receivedPostback(messagingEvent);
         } else if (messagingEvent.read) {
           receivedMessageRead(messagingEvent);
@@ -407,30 +463,61 @@ app.get('/db', (req, res) => {
 app.get('/surveys/:surveyId/send/:fbUserId', (req, res) => {
   const surveyId = req.params.surveyId;
   const fbUserId = req.params.fbUserId;
-  const results = [];
 
-  let survey;
+  pg.connect(connectionString).then((client) => {
+    client.query(`SELECT * FROM "survey" WHERE "id" = ${surveyId} LIMIT 1;`).then((surveyResult) => {
+      console.log('surveyResult', surveyResult);
+      if (surveyResult.rowCount === 0) return res.status(404).json({success: false, data: 'Survey not found'});
+      const survey = surveyResult.rows[0];
 
-  pg.connect(connectionString, (err, client, done) => {
-    if (err) {
-      done();
-      console.log(err);
-      return res.status(500).json({success: false, data: err});
-    }
+      isChatted(survey.fbPageId, fbUserId).then((chattedResult) => {
+        console.log('chattedResult', chattedResult);
+        if (!chattedResult) return res.status(404).json({success: false, data: 'User havent chat with the bot yet'});
 
-    const query = client.query(`SELECT * FROM "survey" WHERE "id" = ${surveyId} LIMIT 1;`);
+        client.query(`SELECT * FROM "page" WHERE "fbPageId" = '${survey.fbPageId}' LIMIT 1;`).then((pageResult) => {
+          console.log('pageResult', pageResult);
+          if (pageResult.rowCount === 0) return res.status(404).json({success: false, data: 'Page not found'});
+          const page = pageResult.rows[0];
 
-    query.on('row', (row) => {
-      results.push(row);
+          client.query(`SELECT * FROM "answer" WHERE "surveyId" = ${surveyId} AND "fbUserId" = '${fbUserId}' LIMIT 1;`).then((answerResult) => {
+            console.log('answerResult', answerResult);
+            if (answerResult.rowCount === 0) {
+              console.log('insertAnswerResult');
+              client.query(`INSERT INTO "answer" VALUES ('${fbUserId}', ${surveyId}, '${survey.content}', '0');`).then(() => {
+                const question = survey.content.questions[0];
+                console.log(question);
+                if (question.type === 'multiple') {
+                  const messageData = {
+                    recipient: {
+                      id: fbUserId
+                    },
+                    message: {
+                      text: question.title,
+                      quick_replies: []
+                    }
+                  };
+
+                  question.options.forEach((option) => {
+                    messageData.message.quick_replies.push({
+                      'content_type': 'text',
+                      'title': option.title,
+                      'payload': `${surveyId}-0`
+                    });
+                  });
+
+                  console.log('sendQuickReply', messageData);
+                  sendQuickReply(messageData);
+                  return res.status(200).json({success: true});
+                }
+              });
+            }
+          });
+        });
+      });
     });
-
-    query.on('end', () => {
-      done();
-      if (results.length === 0) return res.status(404).json({success: false, data: 'Not found'});
-      survey = results[0];
-      console.log(isPageLikedUser(survey.fbPageId, fbUserId));
-      return res.send(isPageLikedUser(survey.fbPageId, fbUserId));
-    });
+  }).catch((err) => {
+    console.err(err);
+    return res.status(500).json({success: false, data: err});
   });
 });
 
@@ -473,6 +560,9 @@ app.get('/surveys', (req, res) => {
     });
   });
 });
+
+app.get('/send/:surveyId', (req, res) => {
+  const {surveyId} = req.params;
 
 app.get('/latestAnswer', (req, res) => {
   const results = [];
