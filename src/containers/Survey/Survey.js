@@ -73,7 +73,7 @@ export default class Survey extends Component {
     fetch('https://89e3877e.ngrok.io/surveys', {
       method: 'POST',
       headers: {
-        Accept: 'application/json',
+        'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({

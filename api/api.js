@@ -366,8 +366,6 @@ function receivedMessageRead(event) {
   console.log(`Received message read event for watermark ${watermark} and sequence number ${sequenceNumber}`);
 }
 
-<<<<<<< HEAD
-=======
 function isPageLikedUser(fbPageId, fbUserId) {
   return new Promise((resolve, reject) => {
     const results = [];
@@ -400,7 +398,6 @@ function formatReport(data) {
   return data;
 }
 
->>>>>>> c7cedfcb7112ed72295cf76d1509a05b262d2500
 // API
 
 app.get('/webhook', (req, res) => {
@@ -563,6 +560,9 @@ app.get('/surveys', (req, res) => {
 
 app.get('/send/:surveyId', (req, res) => {
   const {surveyId} = req.params;
+  sendSurveyMessage(surveyId);
+  return res.status(200);
+});
 
 app.get('/latestAnswer', (req, res) => {
   const results = [];
