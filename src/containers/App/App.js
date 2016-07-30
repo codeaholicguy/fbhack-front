@@ -5,14 +5,14 @@ import { LinkContainer } from 'react-router-bootstrap';
 import Navbar from 'react-bootstrap/lib/Navbar';
 import Nav from 'react-bootstrap/lib/Nav';
 import NavItem from 'react-bootstrap/lib/NavItem';
+import Button from 'react-bootstrap/lib/Button';
 import Helmet from 'react-helmet';
 import { isLoaded as isInfoLoaded, load as loadInfo } from 'redux/modules/info';
 import { isLoaded as isAuthLoaded, load as loadAuth, logout } from 'redux/modules/auth';
-import { InfoBar } from 'components';
 import { push } from 'react-router-redux';
 import config from '../../config';
 import { asyncConnect } from 'redux-async-connect';
-
+require('rc-slider/assets/index.css');
 @asyncConnect([{
   promise: ({store: {dispatch, getState}}) => {
     const promises = [];
@@ -66,7 +66,7 @@ export default class App extends Component {
         <Navbar fixedTop>
           <Navbar.Header>
             <Navbar.Brand>
-              <IndexLink to="/" activeStyle={{color: '#33e0ff'}}>
+              <IndexLink to="/" activeStyle={{color: '#970fbf'}}>
                 <div className={styles.brand}/>
                 <span>{config.app.title}</span>
               </IndexLink>
@@ -76,8 +76,15 @@ export default class App extends Component {
 
           <Navbar.Collapse eventKey={0}>
             <Nav navbar>
+              <LinkContainer to="/report">
+                <NavItem eventKey={1}>Report</NavItem>
+              </LinkContainer>
+            </Nav>
+            <Nav pullRight>
               <LinkContainer to="/survey">
-                <NavItem eventKey={1}>Survey</NavItem>
+                <NavItem eventKey={2}>
+                  <Button bsStyle="primary">Create Survey</Button>
+                </NavItem>
               </LinkContainer>
             </Nav>
           </Navbar.Collapse>
@@ -85,14 +92,6 @@ export default class App extends Component {
 
         <div className={styles.appContent}>
           {this.props.children}
-        </div>
-        <InfoBar/>
-
-        <div className="well text-center">
-          Have questions? Ask for help <a
-          href="https://github.com/erikras/react-redux-universal-hot-example/issues"
-          target="_blank">on Github</a> or in the <a
-          href="https://discord.gg/0ZcbPKXt5bZZb1Ko" target="_blank">#react-redux-universal</a> Discord channel.
         </div>
       </div>
     );
