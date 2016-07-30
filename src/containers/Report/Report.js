@@ -14,13 +14,24 @@ export default class Report extends Component {
     currentSurvey: PropTypes.object
   }
 
-  constructor() {
-    super();
+  constructor(props) {
+    super(props);
     this.state = {
       data: Data,
-      currentSurvey: Data.surveys.length ? Data.surveys[0] : undefined,
+      currentSurvey: this.getDefaultSurvey(props),
       isShowSurveys: true
     };
+  }
+
+  getDefaultSurvey = (props) => {
+    const reportId = props.routeParams.reportId;
+    if (reportId) {
+      return Data.surveys.find((survey) => {
+        return survey.id == reportId;
+      });
+    } else {
+      return Data.surveys.length ? Data.surveys[0] : undefined;
+    }
   }
 
   getIconName = (filter) => {
@@ -50,8 +61,7 @@ export default class Report extends Component {
 
   showSurveysComponent = (isShowSurveys) => {
     this.setState({
-      isShowSurveys: isShowSurveys,
-      currentSurvey: Data.surveys.length ? Data.surveys[0] : undefined
+      isShowSurveys: isShowSurveys
     });
   }
 
