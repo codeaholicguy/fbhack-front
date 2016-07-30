@@ -95,7 +95,7 @@ export default class Home extends Component {
               </div>
               <div style={styles.actionContainer}>
                 <div style={{flex: 1, display: 'flex', justifyContent: 'center'}}>
-                  <button type="button" className="btn btn-primary" onClick={() => fetch(`https://89e3877e.ngrok.io/send/${survey.id}`))}>Run</button>
+                  <button type="button" className="btn btn-primary" onClick={() => fetch(`https://89e3877e.ngrok.io/send/${survey.id}`)}>Run</button>
                 </div>
                 <div style={{flex: 1, display: 'flex', justifyContent: 'center'}}>
                   <button type="button" className="btn btn-default" onClick={this.onAddOption}>Clone</button>
