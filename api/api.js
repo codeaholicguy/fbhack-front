@@ -422,14 +422,15 @@ app.get('/surveys/:surveyId/send/:fbUserId', (req, res) => {
       done();
       if (results.length === 0) return res.status(404).json({success: false, data: 'Not found'});
       survey = results[0];
-      console.log(isPageLikedUser(survey.fbPageId, fbUserId));
-      return res.send(isPageLikedUser(survey.fbPageId, fbUserId));
+      const pIsPageLikedUser = isPageLikedUser(survey.fbPageId, fbUserId);
+      pIsPageLikedUser.then((result) => {
+        return res.send(result);
+      });
     });
   });
 });
 
 app.post('/surveys', (req, res) => {
-  console.log(req.body)
   const {title, fbPageId, content} = req.body;
 
   pg.connect(connectionString, (err, client, done) => {
