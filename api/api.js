@@ -5,6 +5,9 @@ import config from '../src/config';
 import http from 'http';
 import SocketIo from 'socket.io';
 import request from 'request';
+import pg from 'pg';
+
+const connectionString = process.env.DATABASE_URL || 'postgres://localhost:5432/fbhack';
 
 const app = express();
 
@@ -335,4 +338,26 @@ app.post('/webhook', (req, res) => {
 
     res.sendStatus(200);
   }
+});
+
+app.get('/db', (req, res) => {
+  const results = [];
+  pg.connect(connectionString, (err, client, done) => {
+    if (err) {
+      done();
+      console.log(err);
+      return res.status(500).json({success: false, data: err});
+    }
+
+    const query = client.query(`SELECT * FROM "test" ORDER BY id ASC;`);
+
+    query.on('row', (row) => {
+      results.push(row);
+    });
+
+    query.on('end', () => {
+      done();
+      return res.json(results);
+    });
+  });
 });
