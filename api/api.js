@@ -366,6 +366,41 @@ function receivedMessageRead(event) {
   console.log(`Received message read event for watermark ${watermark} and sequence number ${sequenceNumber}`);
 }
 
+<<<<<<< HEAD
+=======
+function isPageLikedUser(fbPageId, fbUserId) {
+  return new Promise((resolve, reject) => {
+    const results = [];
+
+    pg.connect(connectionString, (err, client) => {
+      if (err) {
+        reject();
+        console.log(err);
+        throw err;
+      }
+
+      const query = client.query(`SELECT COUNT(*) FROM "page_member" WHERE "fbPageId" = '${fbPageId}' AND "fbUserId" = '${fbUserId}'`);
+
+      query.on('row', (row) => {
+        results.push(row);
+      });
+
+      query.on('end', () => {
+        resolve();
+        if (results.length === 0 || results[0].count === 0) return false;
+        return true;
+      });
+    });
+  });
+}
+
+
+function formatReport(data) {
+  console.log(data);
+  return data;
+}
+
+>>>>>>> c7cedfcb7112ed72295cf76d1509a05b262d2500
 // API
 
 app.get('/webhook', (req, res) => {
@@ -528,5 +563,24 @@ app.get('/surveys', (req, res) => {
 
 app.get('/send/:surveyId', (req, res) => {
   const {surveyId} = req.params;
-  sendSurveyMessage(surveyId).then(() => res.status(200));
+
+app.get('/latestAnswer', (req, res) => {
+  const results = [];
+  pg.connect(connectionString, (err, client, done) => {
+    if (err) {
+      done();
+      console.log(err);
+      return res.status(500).json({success: false, data: err});
+    }
+
+    const query = client.query('SELECT * FROM "answer"');
+
+    query.on('row', (row) => {
+      results.push(row);
+    });
+    query.on('end', () => {
+      done();
+      return res.status(200).json({results: formatReport(results)});
+    });
+  });
 });
