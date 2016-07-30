@@ -37,11 +37,13 @@ export default class Report extends Component {
               this.state.lastAnswer = data;
               data = data.content;
 
-              let currentSurvey = this.state.currentSurvey;
-              currentSurvey.questions[0].answers.unshift(data);
-              this.setState({
-                currentSurvey: currentSurvey
-              });
+              if (data.avatar) {
+                let currentSurvey = this.state.currentSurvey;
+                currentSurvey.questions[0].answers.unshift(data);
+                this.setState({
+                  currentSurvey: currentSurvey
+                });
+              }
             }
           }
         })
