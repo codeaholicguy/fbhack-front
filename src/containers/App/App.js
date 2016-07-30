@@ -82,6 +82,11 @@ export default class App extends Component {
                 <NavItem eventKey={1}>Report</NavItem>
               </LinkContainer>
             </Nav>
+            <Nav navbar>
+              <LinkContainer to="/management">
+                <NavItem eventKey={1}>Management</NavItem>
+              </LinkContainer>
+            </Nav>
             <Nav pullRight>
               <LinkContainer to="/survey">
                 <NavItem eventKey={2}>

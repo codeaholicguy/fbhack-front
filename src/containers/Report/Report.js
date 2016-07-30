@@ -6,7 +6,7 @@ import Data from './data';
 import {PieChart, LineChart, BarChart} from 'react-d3-components';
 
 @connect(
-  () => ({}),
+  (state, props) => ({reportId: props.routeParams.reportId}),
   {initialize})
 export default class Report extends Component {
   static propTypes = {
