@@ -4,6 +4,7 @@ import Helmet from 'react-helmet';
 import {initialize} from 'redux-form';
 import Data from './data';
 import {PieChart, LineChart, BarChart} from 'react-d3-components';
+import fetch from 'isomorphic-fetch';
 
 @connect(
   (state, props) => ({reportId: props.routeParams.reportId}),
@@ -22,6 +23,32 @@ export default class Report extends Component {
       isShowSurveys: true
     };
   }
+
+  componentDidMount = () => {
+    const id = setInterval(() => {
+      if (!this.state.fetchedData) {
+        fetch('http://localhost:3030/latestAnswer')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.results.length) {
+            data = data.results[data.results.length - 1];
+
+            if (!this.state.lastAnswer || (data.fbUserId != this.state.lastAnswer.fbUserId)) {
+              this.state.lastAnswer = data;
+              data = data.content;
+
+              let currentSurvey = this.state.currentSurvey;
+              currentSurvey.questions[0].answers.unshift(data);
+              this.setState({
+                currentSurvey: currentSurvey
+              });
+            }
+          }
+        })
+      } 
+    }, 3000);
+  }
+  
 
   getDefaultSurvey = (props) => {
     const reportId = props.routeParams.reportId;

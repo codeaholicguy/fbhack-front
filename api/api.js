@@ -474,7 +474,7 @@ app.get('/surveys', (req, res) => {
   });
 });
 
-app.get('/report', (req, res) => {
+app.get('/latestAnswer', (req, res) => {
   const results = [];
   pg.connect(connectionString, (err, client, done) => {
     if (err) {
@@ -483,7 +483,7 @@ app.get('/report', (req, res) => {
       return res.status(500).json({success: false, data: err});
     }
 
-    const query = client.query('SELECT * FROM "survey"');
+    const query = client.query('SELECT * FROM "answer"');
 
     query.on('row', (row) => {
       results.push(row);
