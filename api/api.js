@@ -448,3 +448,24 @@ app.post('/surveys', (req, res) => {
     });
   });
 });
+
+app.get('/surveys', (req, res) => {
+  const results = [];
+  pg.connect(connectionString, (err, client, done) => {
+    if (err) {
+      done();
+      console.log(err);
+      return res.status(500).json({success: false, data: err});
+    }
+
+    const query = client.query('SELECT * FROM survey');
+
+    query.on('row', (row) => {
+      results.push(row);
+    });
+    query.on('end', () => {
+      done();
+      return res.status(200).json({results});
+    });
+  });
+});

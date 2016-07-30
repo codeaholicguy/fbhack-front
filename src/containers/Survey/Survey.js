@@ -3,7 +3,11 @@ import {connect} from 'react-redux';
 import Helmet from 'react-helmet';
 import {initialize} from 'redux-form';
 import Slider from 'rc-slider';
-
+import Question from '../../components/Question';
+import _ from 'lodash';
+import fetch from 'isomorphic-fetch';
+import NotificationSystem from 'react-notification-system';
+import {push} from 'react-router-redux';
 
 const styles = {
   sectionContainer: {
@@ -18,7 +22,7 @@ const styles = {
 
 @connect(
   () => ({}),
-  {initialize})
+  {initialize, push})
 export default class Survey extends Component {
   static propTypes = {
     initialize: PropTypes.func.isRequired
@@ -26,7 +30,11 @@ export default class Survey extends Component {
   constructor() {
     super();
     this.state = {
-      age: [16, 35]
+      title: '',
+      gender: ['male', 'female'],
+      age: [16, 35],
+      questions: [],
+      branches: []
     };
   }
   onSliderChange = (value) => {
@@ -35,9 +43,65 @@ export default class Survey extends Component {
     });
   }
 
+  addQuestion = (question) => {
+    this.setState({
+      questions: [...this.state.questions, question]
+    });
+  }
+
+  addBranch = (branch) => {
+    this.setState({
+      branches: [...this.state.branches, branch]
+    });
+  }
+
+  addQuestionToBranch = (branch) => {
+    return (question) => {
+      branch.questions = branch.questions || [];
+      branch.questions = [...branch.questions, question];
+      const branches = this.state.branches.map((value) => {
+        if (value.title === branch.title) return branch;
+        return value;
+      });
+      this.setState({
+        branches
+      });
+    };
+  }
+  submitSurvey = () => {
+    const {title, ...rest} = this.state;
+    fetch('https://89e3877e.ngrok.io/surveys', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: this.state.title,
+        fbPageId: 262174670835679,
+        content: JSON.stringify(rest)
+      })
+    }).then(() => this.refs.notificationSystem.addNotification({
+      message: 'Survey added to system',
+      level: 'success',
+      autoDismiss: 10,
+      action: {
+        label: 'Go to survey management',
+        callback: () => this.props.push('/management')
+      }
+    }))
+    .then(() => this.setState({
+      title: '',
+      gender: ['male', 'female'],
+      age: [16, 35],
+      questions: [],
+      branches: []
+    }));
+  }
   render() {
     return (
       <div className="container">
+        <NotificationSystem ref="notificationSystem" />
         <h1>Create Survey</h1>
         <Helmet title="Survey"/>
         <div style={styles.sectionContainer}>
@@ -57,17 +121,51 @@ export default class Survey extends Component {
                 alignItems: 'center'
               }}>
                 <div style={{paddingRight: 20}}>
+                  <h5>Title</h5>
+                </div>
+                <div style={{flex: 1}}>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={this.state.title}
+                    onChange = {(event) => this.setState({title: event.target.value})} placeholder="Title"/>
+                </div>
+              </div>
+            </div>
+            <div style={{
+              display: 'flex',
+              flex: '1 1 auto',
+              padding: 5
+            }}>
+              <div style={{
+                flex: '1',
+                display: 'flex',
+                alignItems: 'center'
+              }}>
+                <div style={{paddingRight: 20}}>
                   <h5>Gender</h5>
                 </div>
                 <div style={{display: 'flex', paddingTop: 5}}>
                   <div className="checkbox-inline">
                     <label>
-                      <input type="checkbox" ref="gender_male" /> Male
+                      <input type="checkbox" checked={_.find(this.state.gender, (value) => value === 'male') ? true : false} ref="gender_male" onChange={() => {
+                        if (_.find(this.state.gender, (value) => value === 'male')) {
+                          this.setState({gender: _.pull(this.state.gender, 'male')});
+                        } else {
+                          this.setState({gender: _.union(this.state.gender, ['male'])});
+                        }
+                      }} /> Male
                     </label>
                   </div>
                   <div className="checkbox-inline">
                     <label>
-                      <input type="checkbox" ref="gender_female"/> Female
+                      <input type="checkbox" checked={_.find(this.state.gender, (value) => value === 'female') ? true : false } ref="gender_female" onChange={() => {
+                        if (_.find(this.state.gender, (value) => value === 'female')) {
+                          this.setState({gender: _.pull(this.state.gender, 'female')});
+                        } else {
+                          this.setState({gender: _.union(this.state.gender, ['female'])});
+                        }
+                      }}/> Female
                     </label>
                   </div>
                 </div>
@@ -112,6 +210,13 @@ export default class Survey extends Component {
                 </div>
               </div>
             </div>
+            <div style={{
+              display: 'flex',
+              flex: '1 1 auto',
+              padding: 5
+            }}>
+              <button type="button" className="btn btn-primary" onClick={this.submitSurvey}>Create</button>
+            </div>
           </form>
         </div>
         <div style={styles.sectionContainer}>
@@ -119,6 +224,27 @@ export default class Survey extends Component {
             fontSize: 18,
             fontWeight: 500
           }}>Question Tree</div>
+          <div style={{display: 'flex', minWidth: 1024, overflow: 'auto'}}>
+            <div style={{display: 'flex', flexShrink: 0, flexDirection: 'column', marginRight: 10}}>
+              {
+                this.state.questions.map((question) =>
+                  <Question question={question} onAddBranch={this.addBranch}/>
+                )
+              }
+              <Question onAddQuestion={this.addQuestion}/>
+            </div>
+            {this.state.branches.map((branch) =>
+              <div style={{display: 'flex', flexShrink: 0, flexDirection: 'column', marginRight: 10}}>
+                <h5>{`${_.truncate(branch.title.split('.')[0], {length: 30})}.${_.truncate(branch.title.split('.')[1], {length: 20})}`}</h5>
+                {
+                  branch.questions.map((question) =>
+                    <Question question={question} />
+                  )
+                }
+                <Question onAddQuestion={this.addQuestionToBranch(branch)}/>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
