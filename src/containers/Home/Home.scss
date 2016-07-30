@@ -1,12 +1,17 @@
 @import "../../theme/variables.scss";
 
 .home {
+  background: #2d2d2d;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
   dd {
     margin-bottom: 15px;
   }
 }
 .masthead {
-  background: #2d2d2d;
   padding: 40px 20px;
   color: white;
   text-align: center;

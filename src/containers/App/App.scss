@@ -19,4 +19,7 @@
 }
 .appContent {
   margin: 50px 0; // for fixed navbar
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
 }
