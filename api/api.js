@@ -2,13 +2,10 @@ import express from 'express';
 import session from 'express-session';
 import bodyParser from 'body-parser';
 import config from '../src/config';
-import * as actions from './actions/index';
-import {mapUrl} from 'utils/url.js';
-import PrettyError from 'pretty-error';
 import http from 'http';
 import SocketIo from 'socket.io';
+import request from 'request';
 
-const pretty = new PrettyError();
 const app = express();
 
 const server = new http.Server(app);
@@ -23,34 +20,6 @@ app.use(session({
   cookie: { maxAge: 60000 }
 }));
 app.use(bodyParser.json());
-
-
-app.use((req, res) => {
-  const splittedUrlPath = req.url.split('?')[0].split('/').slice(1);
-
-  const {action, params} = mapUrl(actions, splittedUrlPath);
-
-  if (action) {
-    action(req, params)
-      .then((result) => {
-        if (result instanceof Function) {
-          result(res);
-        } else {
-          res.json(result);
-        }
-      }, (reason) => {
-        if (reason && reason.redirect) {
-          res.redirect(reason.redirect);
-        } else {
-          console.error('API ERROR:', pretty.render(reason));
-          res.status(reason.status || 500).json(reason);
-        }
-      });
-  } else {
-    res.status(404).end('NOT FOUND');
-  }
-});
-
 
 const bufferSize = 100;
 const messageBuffer = new Array(bufferSize);
@@ -89,3 +58,281 @@ if (config.apiPort) {
 } else {
   console.error('==>     ERROR: No PORT environment variable has been specified');
 }
+
+// Fbhack
+
+app.get('/bot', (req, res) => {
+  const result = {
+    verifyToken: process.env.VERIFY_TOKEN,
+    accessToken: process.env.ACCESS_TOKEN
+  };
+
+  res.send(result);
+});
+
+function callSendAPI(messageData) {
+  request({
+    uri: 'https://graph.facebook.com/v2.6/me/messages',
+    qs: { access_token: process.env.ACCESS_TOKEN },
+    method: 'POST',
+    json: messageData
+
+  }, (error, response, body) => {
+    if (!error && response.statusCode === 200) {
+      const recipientId = body.recipient_id;
+      const messageId = body.message_id;
+
+      console.log(`Successfully sent generic message with id ${messageId} to recipient ${recipientId}`);
+    } else {
+      console.error('Unable to send message.');
+      console.error(response);
+      console.error(error);
+    }
+  });
+}
+
+function sendTextMessage(recipientId, messageText) {
+  const messageData = {
+    recipient: {
+      id: recipientId
+    },
+    message: {
+      text: messageText
+    }
+  };
+
+  callSendAPI(messageData);
+}
+
+function sendGenericMessage(recipientId) {
+  const messageData = {
+    recipient: {
+      id: recipientId
+    },
+    message: {
+      attachment: {
+        type: 'template',
+        payload: {
+          template_type: 'generic',
+          elements: [{
+            title: 'rift',
+            subtitle: 'Next-generation virtual reality',
+            item_url: 'https://www.oculus.com/en-us/rift/',
+            image_url: 'http://messengerdemo.parseapp.com/img/rift.png',
+            buttons: [{
+              type: 'web_url',
+              url: 'https://www.oculus.com/en-us/rift/',
+              title: 'Open Web URL'
+            }, {
+              type: 'postback',
+              title: 'Call Postback',
+              payload: 'Payload for first bubble',
+            }],
+          }, {
+            title: 'touch',
+            subtitle: 'Your Hands, Now in VR',
+            item_url: 'https://www.oculus.com/en-us/touch/',
+            image_url: 'http://messengerdemo.parseapp.com/img/touch.png',
+            buttons: [{
+              type: 'web_url',
+              url: 'https://www.oculus.com/en-us/touch/',
+              title: 'Open Web URL'
+            }, {
+              type: 'postback',
+              title: 'Call Postback',
+              payload: 'Payload for second bubble',
+            }]
+          }]
+        }
+      }
+    }
+  };
+
+  callSendAPI(messageData);
+}
+
+function sendButtonMessage(recipientId) {
+  const messageData = {
+    recipient: {
+      id: recipientId
+    },
+    message: {
+      attachment: {
+        type: 'template',
+        payload: {
+          template_type: 'button',
+          text: 'This is test text',
+          buttons: [{
+            type: 'web_url',
+            url: 'https://www.oculus.com/en-us/rift/',
+            title: 'Open Web URL'
+          }, {
+            type: 'postback',
+            title: 'Trigger Postback',
+            payload: 'DEVELOPED_DEFINED_PAYLOAD'
+          }, {
+            type: 'phone_number',
+            title: 'Call Phone Number',
+            payload: '+16505551234'
+          }]
+        }
+      }
+    }
+  };
+
+  callSendAPI(messageData);
+}
+
+function sendQuickReply(recipientId) {
+  const messageData = {
+    recipient: {
+      id: recipientId
+    },
+    message: {
+      text: `What's your favorite movie genre?`,
+      metadata: 'DEVELOPER_DEFINED_METADATA',
+      quick_replies: [
+        {
+          'content_type': 'text',
+          'title': 'Action',
+          'payload': 'DEVELOPER_DEFINED_PAYLOAD_FOR_PICKING_ACTION'
+        },
+        {
+          'content_type': 'text',
+          'title': 'Comedy',
+          'payload': 'DEVELOPER_DEFINED_PAYLOAD_FOR_PICKING_COMEDY'
+        },
+        {
+          'content_type': 'text',
+          'title': 'Drama',
+          'payload': 'DEVELOPER_DEFINED_PAYLOAD_FOR_PICKING_DRAMA'
+        }
+      ]
+    }
+  };
+
+  callSendAPI(messageData);
+}
+
+function sendImageMessage(recipientId) {
+  const messageData = {
+    recipient: {
+      id: recipientId
+    },
+    message: {
+      attachment: {
+        type: 'image',
+        payload: {
+          url: 'http://i0.kym-cdn.com/photos/images/newsfeed/000/096/044/trollface.jpg'
+        }
+      }
+    }
+  };
+
+  callSendAPI(messageData);
+}
+
+function receivedMessage(event) {
+  const senderID = event.sender.id;
+  const recipientID = event.recipient.id;
+  const timeOfMessage = event.timestamp;
+  const message = event.message;
+
+  console.log(`Received message for user ${senderID} and page ${recipientID} at ${timeOfMessage} with message`);
+  console.log(JSON.stringify(message));
+
+  const isEcho = message.is_echo;
+  const messageId = message.mid;
+  const appId = message.app_id;
+  const metadata = message.metadata;
+  const messageText = message.text;
+  const messageAttachments = message.attachments;
+  const quickReply = message.quick_reply;
+
+  if (isEcho) {
+    console.log(`Received echo for message ${messageId} and app ${appId} with metadata ${metadata}`);
+    return;
+  } else if (quickReply) {
+    const quickReplyPayload = quickReply.payload;
+    console.log(`Quick reply for message ${messageId} with payload ${quickReplyPayload}`);
+
+    sendTextMessage(senderID, `Quick reply tapped`);
+    return;
+  }
+
+  if (messageText) {
+    switch (messageText) {
+      case 'image':
+        sendImageMessage(senderID);
+        break;
+
+      case 'button':
+        sendButtonMessage(senderID);
+        break;
+
+      case 'generic':
+        sendGenericMessage(senderID);
+        break;
+
+      case 'quick':
+        sendQuickReply(senderID);
+        break;
+
+      default:
+        sendTextMessage(senderID, messageText);
+    }
+  } else if (messageAttachments) {
+    sendTextMessage(senderID, 'Message with attachment received');
+  }
+}
+
+function receivedPostback(event) {
+  const senderID = event.sender.id;
+  const recipientID = event.recipient.id;
+  const timeOfPostback = event.timestamp;
+  const payload = event.postback.payload;
+
+  console.log(`Received postback for user ${senderID} and page ${recipientID} with payload ${payload}, ${timeOfPostback}`);
+
+  sendTextMessage(senderID, 'Postback called');
+}
+
+function receivedMessageRead(event) {
+  const watermark = event.read.watermark;
+  const sequenceNumber = event.read.seq;
+
+  console.log(`Received message read event for watermark ${watermark} and sequence number ${sequenceNumber}`);
+}
+
+app.get('/webhook', (req, res) => {
+  if (req.query['hub.mode'] === 'subscribe' &&
+      req.query['hub.verify_token'] === process.env.VERIFY_TOKEN) {
+    console.log('Validating webhook');
+    res.status(200).send(req.query['hub.challenge']);
+  } else {
+    console.error('Failed validation. Make sure the validation tokens match.');
+    res.sendStatus(403);
+  }
+});
+
+app.post('/webhook', (req, res) => {
+  const data = req.body;
+
+  if (data.object === 'page') {
+    data.entry.forEach((pageEntry) => {
+      pageEntry.messaging.forEach((messagingEvent) => {
+        if (messagingEvent.message) {
+          receivedMessage(messagingEvent);
+        } else if (messagingEvent.postback) {
+          receivedPostback(messagingEvent);
+        } else if (messagingEvent.read) {
+          receivedMessageRead(messagingEvent);
+        } else {
+          console.log(`Webhook received unknown messagingEvent: ${messagingEvent}`);
+        }
+      });
+    });
+
+    res.sendStatus(200);
+  }
+});
