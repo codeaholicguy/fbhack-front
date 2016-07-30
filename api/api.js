@@ -7,6 +7,8 @@ import SocketIo from 'socket.io';
 import request from 'request';
 import pg from 'pg';
 
+Promise.all(pg);
+
 const connectionString = process.env.DATABASE_URL || 'postgres://localhost:5432/fbhack';
 
 const app = express();
@@ -319,24 +321,16 @@ function isPageLikedUser(fbPageId, fbUserId) {
   return new Promise((resolve, reject) => {
     const results = [];
 
-    pg.connect(connectionString, (err, client) => {
-      if (err) {
-        reject();
-        console.log(err);
-        throw err;
-      }
-
-      const query = client.query(`SELECT COUNT(*) FROM "page_member" WHERE "fbPageId" = '${fbPageId}' AND "fbUserId" = '${fbUserId}'`);
-
-      query.on('row', (row) => {
+    pg.connect(connectionString).then((client) => {
+      client.query(`SELECT COUNT(*) FROM "page_member" WHERE "fbPageId" = '${fbPageId}' AND "fbUserId" = '${fbUserId}'`).then((row) => {
         results.push(row);
+      }).then(() => {
+        if (results.length === 0 || results[0].count === 0) return resolve(false);
+        return resolve(true);
       });
-
-      query.on('end', () => {
-        resolve();
-        if (results.length === 0 || results[0].count === 0) return false;
-        return true;
-      });
+    }).catch((err) => {
+      console.log(err);
+      reject(err);
     });
   });
 }
@@ -422,8 +416,7 @@ app.get('/surveys/:surveyId/send/:fbUserId', (req, res) => {
       done();
       if (results.length === 0) return res.status(404).json({success: false, data: 'Not found'});
       survey = results[0];
-      const pIsPageLikedUser = isPageLikedUser(survey.fbPageId, fbUserId);
-      pIsPageLikedUser.then((result) => {
+      isPageLikedUser(survey.fbPageId, fbUserId).then((result) => {
         return res.send(result);
       });
     });
