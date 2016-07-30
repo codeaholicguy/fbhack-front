@@ -16,6 +16,12 @@ const server = new http.Server(app);
 const io = new SocketIo(server);
 io.path('/ws');
 
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  next();
+});
+
 app.use(session({
   secret: 'react and redux rule!!!!',
   resave: false,
@@ -63,6 +69,8 @@ if (config.apiPort) {
 }
 
 // Fbhack
+
+// Support
 
 app.get('/bot', (req, res) => {
   const result = {
@@ -307,6 +315,34 @@ function receivedMessageRead(event) {
   console.log(`Received message read event for watermark ${watermark} and sequence number ${sequenceNumber}`);
 }
 
+function isPageLikedUser(fbPageId, fbUserId) {
+  return new Promise((resolve, reject) => {
+    const results = [];
+
+    pg.connect(connectionString, (err, client) => {
+      if (err) {
+        reject();
+        console.log(err);
+        throw err;
+      }
+
+      const query = client.query(`SELECT COUNT(*) FROM "page_member" WHERE "fbPageId" = '${fbPageId}' AND "fbUserId" = '${fbUserId}'`);
+
+      query.on('row', (row) => {
+        results.push(row);
+      });
+
+      query.on('end', () => {
+        resolve();
+        if (results.length === 0 || results[0].count === 0) return false;
+        return true;
+      });
+    });
+  });
+}
+
+// API
+
 app.get('/webhook', (req, res) => {
   if (req.query['hub.mode'] === 'subscribe' &&
       req.query['hub.verify_token'] === process.env.VERIFY_TOKEN) {
@@ -358,6 +394,56 @@ app.get('/db', (req, res) => {
     query.on('end', () => {
       done();
       return res.json(results);
+    });
+  });
+});
+
+app.get('/surveys/:surveyId/send/:fbUserId', (req, res) => {
+  const surveyId = req.params.surveyId;
+  const fbUserId = req.params.fbUserId;
+  const results = [];
+
+  let survey;
+
+  pg.connect(connectionString, (err, client, done) => {
+    if (err) {
+      done();
+      console.log(err);
+      return res.status(500).json({success: false, data: err});
+    }
+
+    const query = client.query(`SELECT * FROM "survey" WHERE "id" = ${surveyId} LIMIT 1;`);
+
+    query.on('row', (row) => {
+      results.push(row);
+    });
+
+    query.on('end', () => {
+      done();
+      if (results.length === 0) return res.status(404).json({success: false, data: 'Not found'});
+      survey = results[0];
+      console.log(isPageLikedUser(survey.fbPageId, fbUserId));
+      return res.send(isPageLikedUser(survey.fbPageId, fbUserId));
+    });
+  });
+});
+
+app.post('/surveys', (req, res) => {
+  console.log(req.body)
+  const {title, fbPageId, content} = req.body;
+
+  pg.connect(connectionString, (err, client, done) => {
+    if (err) {
+      done();
+      console.log(err);
+      return res.status(500).json({success: false, data: err});
+    }
+
+    const query = client.query(`INSERT INTO survey VALUES (DEFAULT, '${title}', '${fbPageId}', '${content}')`);
+
+    query.on('end', () => {
+      done();
+      return res.status(200).json({success: true});
     });
   });
 });
