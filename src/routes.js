@@ -4,6 +4,7 @@ import {
     App,
     Home,
     Survey,
+    Report
   } from 'containers';
 
 export default () => {
@@ -12,6 +13,7 @@ export default () => {
       { /* Home (main) route */ }
       <IndexRoute component={Home}/>
       <Route path="survey" component={Survey}/>
+      <Route path="report" component={Report}/>
     </Route>
   );
 };

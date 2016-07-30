@@ -14,6 +14,7 @@ import { push } from 'react-router-redux';
 import config from '../../config';
 import { asyncConnect } from 'redux-async-connect';
 require('rc-slider/assets/index.css');
+require('../Report/index.css');
 @asyncConnect([{
   promise: ({store: {dispatch, getState}}) => {
     const promises = [];
@@ -86,6 +87,9 @@ export default class App extends Component {
                 <NavItem eventKey={2}>
                   <Button bsStyle="primary">Create Survey</Button>
                 </NavItem>
+              </LinkContainer>
+              <LinkContainer to="/report">
+                <NavItem eventKey={2}>Report</NavItem>
               </LinkContainer>
             </Nav>
           </Navbar.Collapse>
