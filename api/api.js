@@ -429,7 +429,6 @@ app.get('/surveys/:surveyId/send/:fbUserId', (req, res) => {
 });
 
 app.post('/surveys', (req, res) => {
-  console.log(req.body)
   const {title, fbPageId, content} = req.body;
 
   pg.connect(connectionString, (err, client, done) => {
@@ -444,6 +443,27 @@ app.post('/surveys', (req, res) => {
     query.on('end', () => {
       done();
       return res.status(200).json({success: true});
+    });
+  });
+});
+
+app.get('/surveys', (req, res) => {
+  const results = [];
+  pg.connect(connectionString, (err, client, done) => {
+    if (err) {
+      done();
+      console.log(err);
+      return res.status(500).json({success: false, data: err});
+    }
+
+    const query = client.query('SELECT * FROM survey');
+
+    query.on('row', (row) => {
+      results.push(row);
+    });
+    query.on('end', () => {
+      done();
+      return res.status(200).json({results});
     });
   });
 });
