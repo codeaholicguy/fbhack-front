@@ -528,7 +528,8 @@ app.post('/surveys', (req, res) => {
       return res.status(500).json({success: false, data: err});
     }
 
-    const query = client.query(`INSERT INTO survey VALUES (DEFAULT, '${title}', '${fbPageId}', '${content}')`);
+    const total = Math.floor(Math.random() * (1000 - 0 + 1)) + 0;
+    const query = client.query(`INSERT INTO survey VALUES (DEFAULT, '${title}', '${fbPageId}', '${content}', ${total}, 0)`);
 
     query.on('end', () => {
       done();
