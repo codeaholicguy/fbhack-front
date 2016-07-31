@@ -92,9 +92,6 @@ export default class App extends Component {
                   <Button bsStyle="primary">Create Survey</Button>
                 </NavItem>
               </LinkContainer>
-              <LinkContainer to="/report">
-                <NavItem eventKey={2}>Report</NavItem>
-              </LinkContainer>
             </Nav>
           </Navbar.Collapse>
         </Navbar>

@@ -1,3 +1,7 @@
+html, #content {
+  background-color: #eee;
+}
+
 h1 {
   padding: 30px 0px;
   margin-top: 50px;
@@ -5,6 +9,7 @@ h1 {
 
 h1 span {
   font-size: 30px;
+  color: #03a9f4;
 }
 
 h1 .btn-group {
@@ -59,7 +64,7 @@ h1 .btn-group .btn {
   padding-bottom: 30px;    
 }
 
-.survey-content:not(:first-child) {
+.survey-content {
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
   padding: 20px 40px;
   margin-top: 20px;
@@ -97,7 +102,7 @@ h1 .btn-group .btn {
   list-style: none;
 }
 
-.survey-question ul li {
+.survey-question ul li:not(:last-child) {
   border-bottom: 1px solid #F5F5F5;
   margin-bottom: 16px;
   padding-bottom: 16px;
@@ -107,6 +112,7 @@ h1 .btn-group .btn {
   width: 50px;
   height: auto;
   border-radius: 50px;
+  float: left;
 }
 
 .survey-question ul li p {
@@ -114,6 +120,7 @@ h1 .btn-group .btn {
   margin-left: 16px;
   font-size: 18px;
   color: #666;  
+  max-width: 85%;
 }
 
 .choices .survey-answer {
